@@ -1,7 +1,9 @@
 // method 1
 
 const asyncHandler = (requestHanlder) => {
+  console.log("requestHanlder ===> ", requestHanlder);
   return (req, res, next) => {
+    // console.log("req ===> ", req);
     Promise.resolve(requestHanlder(req, res, next)).catch((err) => next(err));
   };
 };

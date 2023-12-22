@@ -5,6 +5,9 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 const registerUser = asyncHandler(async (req, res) => {
+  console.log("Request headers:", req.headers);
+  console.log("Request body at the beginning --> ", req.body);
+  console.log("Request files --> ", req.files);
   //1. get user details from frontend
   //2. validation - not empty
   //3. check if user already exists: username, email
@@ -17,7 +20,11 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // 1.
   const { fullName, email, password, username } = req.body;
-  console.log(req.body);
+  console.log("request body --> ", req.body);
+
+  // if (!req.files || Object.keys(req.files).length === 0) {
+  //   throw new ApiError(400, "Avatar file is required");
+  // }
 
   // 2.
   if (
@@ -26,8 +33,24 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required");
   }
 
+  // if (
+  //   [username, fullName, email, password].some(
+  //     (field) => field === undefined || field?.trim() === ""
+  //   )
+  // ) {
+  //   throw new ApiError(400, "All field are required !!");
+  // }
+
+  // if (
+  //   [username, fullName, email, password].some(
+  //     (field) => field === undefined || field?.trim() === ""
+  //   )
+  // ) {
+  //   throw new ApiError(400, "All field are required !!");
+  // }
+
   // 3.
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
@@ -38,7 +61,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // 4.
   const avatarLocalPath = req.files?.avatar[0]?.path;
   const coverImageLocalPath = req.files?.coverImage[0]?.path;
-  console.log(req.files);
+  console.log("req ----> ", req.files);
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
@@ -53,6 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   // 6.
+
   const user = await User.create({
     fullName,
     avatar: avatar.url,
