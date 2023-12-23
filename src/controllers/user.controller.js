@@ -6,8 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   console.log("Request headers:", req.headers);
-  console.log("Request body at the beginning --> ", req.body);
-  console.log("Request files --> ", req.files);
+
   //1. get user details from frontend
   //2. validation - not empty
   //3. check if user already exists: username, email
@@ -22,32 +21,20 @@ const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, password, username } = req.body;
   console.log("request body --> ", req.body);
 
-  // if (!req.files || Object.keys(req.files).length === 0) {
-  //   throw new ApiError(400, "Avatar file is required");
-  // }
-
   // 2.
+  // if (
+  //   [fullName, email, password, username].some((field) => field?.trim() === "")
+  // ) {
+  //   throw new ApiError(400, "All fields are required");
+  // }
+
   if (
-    [fullName, email, password, username].some((field) => field?.trim() === "")
+    [username, fullName, email, password].some(
+      (field) => field === undefined || field?.trim() === ""
+    )
   ) {
-    throw new ApiError(400, "All fields are required");
+    throw new ApiError(400, "All field are required !!");
   }
-
-  // if (
-  //   [username, fullName, email, password].some(
-  //     (field) => field === undefined || field?.trim() === ""
-  //   )
-  // ) {
-  //   throw new ApiError(400, "All field are required !!");
-  // }
-
-  // if (
-  //   [username, fullName, email, password].some(
-  //     (field) => field === undefined || field?.trim() === ""
-  //   )
-  // ) {
-  //   throw new ApiError(400, "All field are required !!");
-  // }
 
   // 3.
   const existedUser = await User.findOne({
@@ -62,8 +49,11 @@ const registerUser = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.files?.avatar[0]?.path;
   const coverImageLocalPath = req.files?.coverImage[0]?.path;
   console.log("req ----> ", req.files);
+  console.log("avatarLocalPath:", avatarLocalPath);
+  console.log("coverImageLocalPath:", coverImageLocalPath);
 
   if (!avatarLocalPath) {
+    console.log("Avatar file is missing!");
     throw new ApiError(400, "Avatar file is required");
   }
 
@@ -72,11 +62,10 @@ const registerUser = asyncHandler(async (req, res) => {
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
   if (!avatar) {
-    throw new ApiError(400, "Avatar file is required");
+    throw new ApiError(400, "Avatar file is required right now");
   }
 
   // 6.
-
   const user = await User.create({
     fullName,
     avatar: avatar.url,
