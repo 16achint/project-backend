@@ -9,9 +9,13 @@ const storage = multer.diskStorage({
   },
 });
 
+// export const upload = multer({
+//   storage: storage,
+// }).fields([
+//   { name: "avatar", maxCount: 1 },
+//   { name: "coverImage", maxCount: 1 },
+// ]);
+
 export const upload = multer({
   storage: storage,
-}).fields([
-  { name: "avatar", maxCount: 1 },
-  { name: "coverImage", maxCount: 1 },
-]);
+});

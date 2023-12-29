@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { jwt } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 const options = {
@@ -344,14 +344,16 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
   if (!username?.trim()) {
-    throw new ApiError(400, "user does not exist");
+    throw new ApiError(400, "username is missing");
   }
 
+  console.log("testing hit 1");
+  console.log("username", username);
   // aggregation pipeline
   const channel = await User.aggregate([
     {
       $match: {
-        username: username.toLowerCase(),
+        username: username?.toLowerCase(),
       },
     },
     {
@@ -364,9 +366,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
     {
       $lookup: {
-        from: "subcriptions",
+        from: "subscriptions",
         localField: "_id",
-        foreignField: "subcriber",
+        foreignField: "subscriber",
         as: "subscribedTo",
       },
     },
@@ -380,9 +382,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         },
         isSubscribed: {
           $cond: {
-            $if: { $in: [req.user?.id, "$subscribers.subscriber"] },
-            $then: true,
-            $else: false,
+            if: { $in: [req.user?.id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
           },
         },
       },
@@ -401,10 +403,12 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
   ]);
 
+  console.log("testing hit 1");
+
   if (!channel?.length) {
     throw new ApiError(404, "channel does not exists");
   }
-  console.log(channel);
+  console.log("channel", channel);
 
   return res
     .status(200)
