@@ -5,29 +5,29 @@ const videoSchema = new mongoose.Schema(
   {
     videoFile: {
       type: String, // clondinary url
-      require: true,
+      required: true,
     },
-    tumbnail: {
+    thumbnail: {
       type: String, // clondinary url
-      require: true,
+      required: true,
     },
     title: {
       type: String,
-      require: true,
+      required: true,
     },
     description: {
       type: String,
-      require: true,
+      required: true,
     },
     duration: {
-      type: Number, // clondinary url
-      require: true,
+      type: Number,
+      required: true,
     },
     view: {
       type: Number,
       default: 0,
     },
-    isPubliced: {
+    isPublished: {
       type: Boolean,
       default: true,
     },
@@ -41,4 +41,4 @@ const videoSchema = new mongoose.Schema(
 
 videoSchema.plugin(mongooseAggregatePaginate);
 
-export const Video = mongoose.model(videoSchema, "Video");
+export const Video = mongoose.model("Video", videoSchema);
