@@ -3,22 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.models.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import ffmpeg from "fluent-ffmpeg";
 import { getVideoDurationInSeconds } from "get-video-duration";
-// import ffmpeg from "ffmpeg";
-
-function getVideoDuration(videoPath) {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, (err, metadata) => {
-      if (err) {
-        reject(err);
-      } else {
-        const durationInSeconds = metadata.format.duration;
-        resolve(durationInSeconds);
-      }
-    });
-  });
-}
 
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
@@ -37,7 +22,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
   if (!videoLocalPath) {
     throw new ApiError("401", "videoFile is required");
   }
-  const calculatedDuration = await getVideoDurationInSeconds(videoLocalPath);
+  const calculatedDuration = await getVideoDurationInSeconds(videoLocalPath); // getVideoDurationInSeconds
 
   if (!thumbnailLocalPath) {
     throw new ApiError(401, "thumbnail is required");
@@ -75,4 +60,68 @@ const uploadVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "video oploaded successfully"));
 }, "uploadVideo");
 
-export { uploadVideo };
+/* 
+
+Get Video by ID:
+Endpoint: GET /api/videos/:id
+Description: Retrieve a specific video by its ID.
+Get All Videos:
+
+Endpoint: GET /api/videos
+Description: Retrieve a list of all videos.
+Update Video:
+
+Endpoint: PUT /api/videos/:id
+Description: Update details of a specific video.
+Delete Video:
+
+Endpoint: DELETE /api/videos/:id
+Description: Delete a specific video.
+Get User Videos:
+
+Endpoint: GET /api/videos/user/:userId
+Description: Retrieve all videos uploaded by a specific user.
+Increase Video View Count:
+
+Endpoint: PUT /api/videos/:id/increase-view
+Description: Increment the view count of a video.
+Toggle Video Privacy:
+
+Endpoint: PUT /api/videos/:id/toggle-privacy
+Description: Toggle the privacy status of a video (public/private).
+Search Videos:
+
+Endpoint: GET /api/videos/search?q=query
+Description: Search for videos based on a query string.
+Get Trending Videos:
+
+Endpoint: GET /api/videos/trending
+Description: Retrieve a list of trending videos.
+Get Recommended Videos:
+
+Endpoint: GET /api/videos/recommended
+Description: Retrieve a list of videos recommended for the current user. */
+
+const getAllVideo = asyncHandler(async (req, res) => {
+  const videos = await Video.find(
+    {},
+    {
+      videoFile: 1,
+      thumbnail: 1,
+      title: 1,
+      description: 1,
+      duration: 1,
+      view: 1,
+    }
+  );
+
+  if (videos.length === 0) {
+    return res.status(200).json(new ApiResponse(200, [], "No videos exist"));
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, videos, "fetched all video"));
+}, "getAllVideo");
+
+export { uploadVideo, getAllVideo };

@@ -12,19 +12,10 @@ import {
   getUserChannelProfile,
   getWatchHistory,
 } from "../controllers/user.controller.js";
-import { uploadVideo } from "../controllers/video.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
-
-// router.route("/register").post(
-//   (res, req, next) => {
-//     next();
-//   },
-//   upload,
-//   registerUser
-// );
 
 router.route("/register").post(
   (res, req, next) => {
@@ -54,15 +45,5 @@ router
 
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
 router.route("/history").get(verifyJWT, getWatchHistory);
-
-// videoController
-router.route("/uploadVideo").post(
-  (req, res, next) => next(),
-  upload.fields([
-    { name: "videoFile", maxCount: 1 },
-    { name: "thumbnail", maxCount: 1 },
-  ]),
-  uploadVideo
-);
 
 export default router;
