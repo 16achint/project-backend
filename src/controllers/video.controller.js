@@ -124,4 +124,20 @@ const getAllVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, videos, "fetched all video"));
 }, "getAllVideo");
 
-export { uploadVideo, getAllVideo };
+const getVideoById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    throw new ApiError(401, "bad request");
+  }
+  const video = await Video.findById(id);
+
+  if (!video) {
+    throw new ApiError(404, "video does not exist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "video fetch successfully"));
+}, "getVideoById");
+
+export { uploadVideo, getAllVideo, getVideoById };
