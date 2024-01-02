@@ -5,6 +5,7 @@ import {
   uploadVideo,
   updateVideoDetails,
   updateThumbnail,
+  deleteVideo,
 } from "../controllers/video.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -31,5 +32,7 @@ router
     upload.fields([{ name: "thumbnail", maxCount: 1 }]),
     updateThumbnail
   );
+
+router.route("/deleteVideo/:id").delete(verifyJWT, deleteVideo);
 
 export default router;

@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 
 export const verifyJWT = asyncHandler(async (req, _, next) => {
   try {
+    console.log("check point verifyJWT");
     const token =
       req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");
@@ -23,6 +24,7 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.log("check point verifyJWT catch");
     throw new ApiError(401, error?.message || "Some went wrong");
   }
 }, "verifyJWT");

@@ -4,6 +4,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.models.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getVideoDurationInSeconds } from "get-video-duration";
+import mongoose from "mongoose";
 
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
@@ -131,10 +132,12 @@ const getVideoById = asyncHandler(async (req, res) => {
 const updateVideoDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
-  console.log("userId", userId);
   const { title, description } = req.body;
 
   const existingVideo = await Video.findById(id);
+  if (existingVideo.owner.toString() !== userId.toString()) {
+    throw new ApiError(403, "You do not have permission to delete this video");
+  }
 
   if (!existingVideo) {
     throw new ApiError(404, "Video does not exit");
@@ -188,6 +191,12 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
 const updateThumbnail = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const thumbnailLocalPath = req.files?.thumbnail[0]?.path;
+  const userId = req.user._id;
+
+  const existingVideo = await Video.findById(id);
+  if (existingVideo.owner.toString() !== userId.toString()) {
+    throw new ApiError(403, "You do not have permission to delete this video");
+  }
 
   if (!thumbnailLocalPath) {
     throw new ApiError(401, "thumbnail is required");
@@ -214,15 +223,25 @@ const updateThumbnail = asyncHandler(async (req, res) => {
 }, "updateThumbnail");
 
 const deleteVideo = asyncHandler(async (req, res) => {
-  const id = req.params;
-  const userId = req.user._id;
-  console.log("userId", userId);
-  const video = Video.findByIdAndDelete(id);
+  const id = req.params.id;
+  const currentUserId = req.user._id;
+  const video = await Video.findById(id);
+  let videodeleted;
+
+  if (video.owner.toString() !== currentUserId.toString()) {
+    throw new ApiError(403, "You do not have permission to delete this video");
+  }
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  } else {
+    videodeleted = await Video.findByIdAndDelete(id);
+  }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "video delete successfully"));
+    .json(new ApiResponse(200, "video delete successfully"));
 });
+
 export {
   uploadVideo,
   getAllVideo,
