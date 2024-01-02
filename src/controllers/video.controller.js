@@ -7,7 +7,7 @@ import { getVideoDurationInSeconds } from "get-video-duration";
 
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
-
+  const userId = req.user._id;
   if (
     [title, description].some(
       (field) => field === undefined || field?.trim() === ""
@@ -45,6 +45,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     videoFile: videoFile.url,
     thumbnail: thumbnail.url,
     duration: calculatedDuration,
+    owner: userId,
   });
 
   const isOploaded = await Video.findById(video._id);
@@ -98,6 +99,7 @@ const getAllVideo = asyncHandler(async (req, res) => {
       description: 1,
       duration: 1,
       view: 1,
+      owner: 1,
     }
   );
 
@@ -128,9 +130,15 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const userId = req.user._id;
+  console.log("userId", userId);
   const { title, description } = req.body;
 
   const existingVideo = await Video.findById(id);
+
+  if (!existingVideo) {
+    throw new ApiError(404, "Video does not exit");
+  }
 
   let updateDetails;
   if (title || description) {
@@ -205,10 +213,21 @@ const updateThumbnail = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "thumbnail updated successfully"));
 }, "updateThumbnail");
 
+const deleteVideo = asyncHandler(async (req, res) => {
+  const id = req.params;
+  const userId = req.user._id;
+  console.log("userId", userId);
+  const video = Video.findByIdAndDelete(id);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "video delete successfully"));
+});
 export {
   uploadVideo,
   getAllVideo,
   getVideoById,
   updateVideoDetails,
   updateThumbnail,
+  deleteVideo,
 };
