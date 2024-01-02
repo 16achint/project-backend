@@ -31,7 +31,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
   const videoFile = await uploadOnCloudinary(videoLocalPath);
   const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
 
-  console.log("videoFile", videoFile);
   if (!videoFile) {
     throw new ApiError(401, "required strong internet to upload video");
   }
@@ -49,7 +48,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
   });
 
   const isOploaded = await Video.findById(video._id);
-  console.log(isOploaded);
 
   if (!isOploaded) {
     throw new ApiError(401, "some thing went wrong while uploading video");
@@ -62,43 +60,31 @@ const uploadVideo = asyncHandler(async (req, res) => {
 
 /* 
 
-Get Video by ID:
-Endpoint: GET /api/videos/:id
-Description: Retrieve a specific video by its ID.
-Get All Videos:
-
-Endpoint: GET /api/videos
-Description: Retrieve a list of all videos.
-Update Video:
-
-Endpoint: PUT /api/videos/:id
-Description: Update details of a specific video.
 Delete Video:
-
 Endpoint: DELETE /api/videos/:id
 Description: Delete a specific video.
-Get User Videos:
 
+Get User Videos:
 Endpoint: GET /api/videos/user/:userId
 Description: Retrieve all videos uploaded by a specific user.
-Increase Video View Count:
 
+Increase Video View Count:
 Endpoint: PUT /api/videos/:id/increase-view
 Description: Increment the view count of a video.
-Toggle Video Privacy:
 
+Toggle Video Privacy:
 Endpoint: PUT /api/videos/:id/toggle-privacy
 Description: Toggle the privacy status of a video (public/private).
-Search Videos:
 
+Search Videos:
 Endpoint: GET /api/videos/search?q=query
 Description: Search for videos based on a query string.
-Get Trending Videos:
 
+Get Trending Videos:
 Endpoint: GET /api/videos/trending
 Description: Retrieve a list of trending videos.
-Get Recommended Videos:
 
+Get Recommended Videos:
 Endpoint: GET /api/videos/recommended
 Description: Retrieve a list of videos recommended for the current user. */
 
@@ -140,4 +126,89 @@ const getVideoById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "video fetch successfully"));
 }, "getVideoById");
 
-export { uploadVideo, getAllVideo, getVideoById };
+const updateVideoDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+
+  const existingVideo = await Video.findById(id);
+
+  let updateDetails;
+  if (title || description) {
+    if (title && description) {
+      updateDetails = await Video.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            title,
+            description,
+          },
+        },
+        { new: true }
+      );
+    } else if (title) {
+      updateDetails = await Video.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            title,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      updateDetails = await Video.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            description,
+          },
+        },
+        { new: true }
+      );
+    }
+  } else {
+    throw new ApiError(401, "fields are required");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updateDetails, "details are updated successfully")
+    );
+}, "updateVideoDetails");
+
+const updateThumbnail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const thumbnailLocalPath = req.files?.thumbnail[0]?.path;
+
+  if (!thumbnailLocalPath) {
+    throw new ApiError(401, "thumbnail is required");
+  }
+  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+
+  if (!thumbnail) {
+    throw new ApiError(401, "slow interent problem try again later");
+  }
+
+  const video = await Video.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        thumbnail: thumbnail.url,
+      },
+    },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "thumbnail updated successfully"));
+}, "updateThumbnail");
+
+export {
+  uploadVideo,
+  getAllVideo,
+  getVideoById,
+  updateVideoDetails,
+  updateThumbnail,
+};
