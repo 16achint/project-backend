@@ -30,12 +30,11 @@ const uploadVideo = asyncHandler(async (req, res) => {
   }
 
   const videoFile = await uploadOnCloudinary(videoLocalPath);
-  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
-
   if (!videoFile) {
     throw new ApiError(401, "required strong internet to upload video");
   }
 
+  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
   if (!thumbnail) {
     throw new ApiError(401, "thumbnail is required try again");
   }
@@ -236,6 +235,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
   } else {
     videodeleted = await Video.findByIdAndDelete(id);
   }
+
+  if (!videodeleted) {
+    throw new ApiError(401, "something went wrong");
+  }
+  console.log("videodeleted", videodeleted);
 
   return res
     .status(200)
