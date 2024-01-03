@@ -60,11 +60,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
 }, "uploadVideo");
 
 /* 
-
-Delete Video:
-Endpoint: DELETE /api/videos/:id
-Description: Delete a specific video.
-
 Get User Videos:
 Endpoint: GET /api/videos/user/:userId
 Description: Retrieve all videos uploaded by a specific user.
@@ -246,6 +241,22 @@ const deleteVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "video delete successfully"));
 });
 
+const getUserVideoById = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    throw new ApiError(402, "user is required");
+  }
+  const userVideos = await Video.find({ owner: userId });
+
+  if (userVideos.length === 0) {
+    throw new ApiResponse(200, [], "user does not have video");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userVideos, "user Video fetched successfully"));
+});
+
 export {
   uploadVideo,
   getAllVideo,
@@ -253,4 +264,5 @@ export {
   updateVideoDetails,
   updateThumbnail,
   deleteVideo,
+  getUserVideoById,
 };

@@ -6,6 +6,7 @@ import {
   updateVideoDetails,
   updateThumbnail,
   deleteVideo,
+  getUserVideoById,
 } from "../controllers/video.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -34,5 +35,6 @@ router
   );
 
 router.route("/deleteVideo/:id").delete(verifyJWT, deleteVideo);
+router.route("/user/:userId").get(getUserVideoById);
 
 export default router;
