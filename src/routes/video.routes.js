@@ -25,16 +25,16 @@ router.route("/uploadVideo").post(
 
 router.route("/").get(getAllVideo);
 router.route("/:id").get(getVideoById);
-router.route("/updateDetails/:id").patch(verifyJWT, updateVideoDetails);
+router.route("/:id").put(verifyJWT, updateVideoDetails);
 router
-  .route("/updateThumbnail/:id")
-  .patch(
+  .route("/:id/thumbnail")
+  .put(
     verifyJWT,
     upload.fields([{ name: "thumbnail", maxCount: 1 }]),
     updateThumbnail
   );
 
-router.route("/deleteVideo/:id").delete(verifyJWT, deleteVideo);
+router.route("/:id/delete").delete(verifyJWT, deleteVideo);
 router.route("/user/:userId").get(getUserVideoById);
 
 export default router;

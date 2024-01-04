@@ -60,10 +60,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
 }, "uploadVideo");
 
 /* 
-Get User Videos:
-Endpoint: GET /api/videos/user/:userId
-Description: Retrieve all videos uploaded by a specific user.
-
 Increase Video View Count:
 Endpoint: PUT /api/videos/:id/increase-view
 Description: Increment the view count of a video.
@@ -239,7 +235,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, "video delete successfully"));
-});
+}, "deleteVideo");
 
 const getUserVideoById = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -255,7 +251,7 @@ const getUserVideoById = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, userVideos, "user Video fetched successfully"));
-});
+}, "getUserVideoById");
 
 export {
   uploadVideo,
