@@ -8,77 +8,10 @@ import { v4 as uuidv4 } from "uuid";
 import mongoose from "mongoose";
 
 const userProgress = new Map();
+
 const generateTempUid = () => {
   return uuidv4();
 };
-
-const getVideoById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const temporaryToken = req.cookies?.temporaryUid || generateTempUid();
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new ApiError(400, "Invalid video ID");
-  }
-
-  const progress = userProgress.get(temporaryToken);
-
-  if (!progress || progress.videoId !== id) {
-    userProgress.set(temporaryToken, {
-      videoId: id,
-      startTime: Date.now(),
-      watchedTime: 0,
-    });
-  }
-  const video = await Video.findById(id);
-
-  if (!video) {
-    throw new ApiError(404, "Video not found");
-  }
-
-  console.log("check point", userProgress.watchedTime); // always undefind
-  const percentageViewed = (userProgress.watchedTime / video.duration) * 100;
-
-  if (percentageViewed >= 50) {
-    const video = await Video.findByIdAndUpdate(
-      id,
-      {
-        $inc: { view: 1 },
-      },
-      { new: true, select: "_id title view" }
-    );
-
-    res
-      .status(200)
-      .json(new ApiResponse(200, video, "Video fetched and count increased"));
-  } else {
-    res
-      .status(200)
-      .json(
-        new ApiResponse(200, video, "Video fetched, but count not increased")
-      );
-  }
-}, "getVideoById");
-
-/* 
-Increase Video View Count:
-Endpoint: PUT /api/videos/:id/increase-view
-Description: Increment the view count of a video.
-
-Toggle Video Privacy:
-Endpoint: PUT /api/videos/:id/toggle-privacy
-Description: Toggle the privacy status of a video (public/private).
-
-Search Videos:
-Endpoint: GET /api/videos/search?q=query
-Description: Search for videos based on a query string.
-
-Get Trending Videos:
-Endpoint: GET /api/videos/trending
-Description: Retrieve a list of trending videos.
-
-Get Recommended Videos:
-Endpoint: GET /api/videos/recommended
-Description: Retrieve a list of videos recommended for the current user. */
 
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
@@ -156,21 +89,52 @@ const getAllVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, videos, "fetched all video"));
 }, "getAllVideo");
 
-// const getVideoById = asyncHandler(async (req, res) => {
-//   const { id } = req.params;
-//   if (!id) {
-//     throw new ApiError(401, "bad request");
-//   }
-//   const video = await Video.findById(id);
+const getVideoById = asyncHandler(async (req, res) => {
+  console.log("checking point");
+  const { id } = req.params;
+  const temporaryToken = req.cookies?.temporaryUid || generateTempUid();
 
-//   if (!video) {
-//     throw new ApiError(404, "video does not exist");
-//   }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
 
-//   return res
-//     .status(200)
-//     .json(new ApiResponse(200, video, "video fetch successfully"));
-// }, "getVideoById");
+  const progress = userProgress.get(temporaryToken);
+
+  if (!progress || progress.videoId !== id) {
+    userProgress.set(temporaryToken, {
+      videoId: id,
+      startTime: Date.now(),
+      watchedTime: 0,
+    });
+  }
+  const video = await Video.findById(id);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  const percentageViewed = (userProgress.watchedTime / video.duration) * 100;
+
+  if (percentageViewed >= 50) {
+    const video = await Video.findByIdAndUpdate(
+      id,
+      {
+        $inc: { view: 1 },
+      },
+      { new: true, select: "_id title view" }
+    );
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, video, "Video fetched and count increased"));
+  } else {
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, video, "Video fetched, but count not increased")
+      );
+  }
+}, "getVideoById");
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -328,7 +292,7 @@ const increaseVideoCount = asyncHandler(async (req, res) => {
   );
 
   return res.status(200);
-});
+}, "increaseVideoCount");
 
 const videoPrivacy = asyncHandler(async (req, res) => {
   const id = req.params.id;
@@ -361,7 +325,58 @@ const videoPrivacy = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, { isPublished: video.isPublished }, `${message}`)
     );
-});
+}, "videoPrivacy");
+
+const searchVideo = asyncHandler(async (req, res) => {
+  const userQuery = req.query.q.toLowerCase();
+
+  if (!userQuery) {
+    return res
+      .status(400)
+      .json(new ApiResponse(400, [], "Invalid search query"));
+  }
+
+  // using mongoes wildcard indexing for search
+
+  // const searchPipeline = [
+  //   {
+  //     $search: {
+  //       index: "searchVideo",
+  //       text: {
+  //         query: userQuery,
+  //         path: {
+  //           wildcard: "*",
+  //         },
+  //       },
+  //     },
+  //   },
+  // ];
+  // const videos = await Video.aggregate(searchPipeline).exec();
+
+  const videos = await Video.find(
+    {
+      $or: [
+        { title: { $regex: userQuery, $options: "i" } }, // Case-insensitive regex match
+        { description: { $regex: userQuery, $options: "i" } },
+      ],
+    },
+    {
+      videoFile: 1,
+      thumbnail: 1,
+      title: 1,
+      description: 1,
+      duration: 1,
+      view: 1,
+      owner: 1,
+    }
+  );
+
+  if (!videos || videos.length === 0) {
+    return res.status(200).json(new ApiResponse(200, [], "No videos exist"));
+  }
+
+  return res.status(200).json(new ApiResponse(200, videos, "Matches found"));
+}, "searchVideo");
 
 export {
   uploadVideo,
@@ -373,4 +388,5 @@ export {
   getUserVideoById,
   increaseVideoCount,
   videoPrivacy,
+  searchVideo,
 };
