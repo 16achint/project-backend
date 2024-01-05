@@ -4,7 +4,81 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.models.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getVideoDurationInSeconds } from "get-video-duration";
+import { v4 as uuidv4 } from "uuid";
 import mongoose from "mongoose";
+
+const userProgress = new Map();
+const generateTempUid = () => {
+  return uuidv4();
+};
+
+const getVideoById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const temporaryToken = req.cookies?.temporaryUid || generateTempUid();
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+
+  const progress = userProgress.get(temporaryToken);
+
+  if (!progress || progress.videoId !== id) {
+    userProgress.set(temporaryToken, {
+      videoId: id,
+      startTime: Date.now(),
+      watchedTime: 0,
+    });
+  }
+  const video = await Video.findById(id);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  console.log("check point", userProgress.watchedTime); // always undefind
+  const percentageViewed = (userProgress.watchedTime / video.duration) * 100;
+
+  if (percentageViewed >= 50) {
+    const video = await Video.findByIdAndUpdate(
+      id,
+      {
+        $inc: { view: 1 },
+      },
+      { new: true, select: "_id title view" }
+    );
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, video, "Video fetched and count increased"));
+  } else {
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, video, "Video fetched, but count not increased")
+      );
+  }
+}, "getVideoById");
+
+/* 
+Increase Video View Count:
+Endpoint: PUT /api/videos/:id/increase-view
+Description: Increment the view count of a video.
+
+Toggle Video Privacy:
+Endpoint: PUT /api/videos/:id/toggle-privacy
+Description: Toggle the privacy status of a video (public/private).
+
+Search Videos:
+Endpoint: GET /api/videos/search?q=query
+Description: Search for videos based on a query string.
+
+Get Trending Videos:
+Endpoint: GET /api/videos/trending
+Description: Retrieve a list of trending videos.
+
+Get Recommended Videos:
+Endpoint: GET /api/videos/recommended
+Description: Retrieve a list of videos recommended for the current user. */
 
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
@@ -59,27 +133,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "video oploaded successfully"));
 }, "uploadVideo");
 
-/* 
-Increase Video View Count:
-Endpoint: PUT /api/videos/:id/increase-view
-Description: Increment the view count of a video.
-
-Toggle Video Privacy:
-Endpoint: PUT /api/videos/:id/toggle-privacy
-Description: Toggle the privacy status of a video (public/private).
-
-Search Videos:
-Endpoint: GET /api/videos/search?q=query
-Description: Search for videos based on a query string.
-
-Get Trending Videos:
-Endpoint: GET /api/videos/trending
-Description: Retrieve a list of trending videos.
-
-Get Recommended Videos:
-Endpoint: GET /api/videos/recommended
-Description: Retrieve a list of videos recommended for the current user. */
-
 const getAllVideo = asyncHandler(async (req, res) => {
   const videos = await Video.find(
     {},
@@ -103,21 +156,21 @@ const getAllVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, videos, "fetched all video"));
 }, "getAllVideo");
 
-const getVideoById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  if (!id) {
-    throw new ApiError(401, "bad request");
-  }
-  const video = await Video.findById(id);
+// const getVideoById = asyncHandler(async (req, res) => {
+//   const { id } = req.params;
+//   if (!id) {
+//     throw new ApiError(401, "bad request");
+//   }
+//   const video = await Video.findById(id);
 
-  if (!video) {
-    throw new ApiError(404, "video does not exist");
-  }
+//   if (!video) {
+//     throw new ApiError(404, "video does not exist");
+//   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, video, "video fetch successfully"));
-}, "getVideoById");
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, video, "video fetch successfully"));
+// }, "getVideoById");
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -239,6 +292,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const getUserVideoById = asyncHandler(async (req, res) => {
   const { userId } = req.params;
+
   if (!userId) {
     throw new ApiError(402, "user is required");
   }
@@ -253,6 +307,62 @@ const getUserVideoById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, userVideos, "user Video fetched successfully"));
 }, "getUserVideoById");
 
+const increaseVideoCount = asyncHandler(async (req, res) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new ApiError(400, "id is required");
+  }
+
+  const video = await Video.findById(id);
+  if (!video) {
+    throw new ApiError(404, "video does exist");
+  }
+
+  const updated = await Video.findByIdAndUpdate(
+    id,
+    {
+      $inc: { view: 1 },
+    },
+    { new: true, select: "_id title view" }
+  );
+
+  return res.status(200);
+});
+
+const videoPrivacy = asyncHandler(async (req, res) => {
+  const id = req.params.id;
+  const { isPublished } = req.body;
+
+  if (!id) {
+    throw new ApiError(401, "video is required");
+  }
+
+  const video = await Video.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        isPublished,
+      },
+    },
+    { new: true }
+  );
+
+  if (!video) {
+    throw new ApiError(404, "video does not exist");
+  }
+
+  let message = "video is private successfully";
+  if (video.isPublished) {
+    message = "video is public successfully";
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { isPublished: video.isPublished }, `${message}`)
+    );
+});
+
 export {
   uploadVideo,
   getAllVideo,
@@ -261,4 +371,6 @@ export {
   updateThumbnail,
   deleteVideo,
   getUserVideoById,
+  increaseVideoCount,
+  videoPrivacy,
 };

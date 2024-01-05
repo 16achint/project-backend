@@ -7,6 +7,8 @@ import {
   updateThumbnail,
   deleteVideo,
   getUserVideoById,
+  increaseVideoCount,
+  videoPrivacy,
 } from "../controllers/video.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -36,5 +38,7 @@ router
 
 router.route("/:id/delete").delete(verifyJWT, deleteVideo);
 router.route("/user/:userId").get(getUserVideoById);
+router.route("/:id/increase-count").post(increaseVideoCount);
+router.route("/:id/toggle-privacy").put(verifyJWT, videoPrivacy);
 
 export default router;
