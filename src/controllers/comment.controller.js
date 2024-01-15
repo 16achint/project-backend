@@ -26,4 +26,40 @@ const getVideoComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, comments, "fetch successfully"));
 });
 
-export { getVideoComment };
+const addComment = asyncHandler(async (req, res) => {
+  const videoId = req.params;
+  const owner = req.user._id;
+  const { content } = req.body;
+
+  if (!videoId || !isValidObjectId(videoId)) {
+    throw new ApiError(401, "video is required...");
+  }
+  if (!owner) {
+    throw new ApiError(401, "login and try again");
+  }
+  if (!content.trim()) {
+    throw new ApiError(401, "content is required");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  const comments = await Comment.create({
+    content,
+    owner,
+    video: videoId,
+  });
+
+  if (!comments) {
+    throw new ApiError("500", "connection is not stable");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "comment added successfully..."));
+});
+
+export { getVideoComment, addComment };
