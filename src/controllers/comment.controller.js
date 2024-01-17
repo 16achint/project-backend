@@ -62,4 +62,28 @@ const addComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "comment added successfully..."));
 });
 
-export { getVideoComment, addComment };
+const updateComment = asyncHandler(async (req, res) => {
+  const id = req.param;
+  const { content } = req.body;
+
+  if (!content.trim()) {
+    throw new ApiError(401, "content is required");
+  }
+  const Comment = await Comment.findByIdAndUpdate(
+    id,
+    {
+      contnet: content,
+    },
+    { new: true }
+  );
+
+  if (!Comment) {
+    throw new ApiError(500, "connection lost try again later...");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, Comment, "comment updated successfully"));
+});
+
+export { getVideoComment, addComment, updateComment };
