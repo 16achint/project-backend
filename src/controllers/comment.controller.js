@@ -86,4 +86,23 @@ const updateComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, Comment, "comment updated successfully"));
 });
 
-export { getVideoComment, addComment, updateComment };
+const deleteComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.param;
+
+  const comment = await Comment.findById(commentId);
+
+  if (!comment) {
+    throw new ApiError(404, "comment not found");
+  }
+
+  if (comment?.owner.toString() != req.user._id.toString()) {
+    throw new ApiError(400, "you don't have permission to delete the comment");
+  }
+  await Comment.findByIdAndDelete(commentId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "your comment deleted successfully"));
+});
+
+export { getVideoComment, addComment, updateComment, deleteComment };
