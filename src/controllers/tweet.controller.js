@@ -35,13 +35,59 @@ const getUserTweet = asyncHandler(async (req, res) => {
     throw new ApiError(401, `invalid userId ${id}`);
   }
 
-  const tweet = await Tweet.find({ owner: id });
+  // const tweet = await Tweet.find({ owner: id });
+  const tweet = await Tweet.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: {
+          $project: [
+            {
+              fullname: 1,
+              avatar: 1,
+              username: 1,
+            },
+          ],
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "likecount",
+      },
+    },
+    {
+      $addFields: {
+        likecount: {
+          $size: $likecount,
+        },
+      },
+    },
+    {
+      $addFields: {
+        owner: {
+          $first: $owner,
+        },
+      },
+    },
+  ]);
 
   if (!tweet || !tweet.length === 0) {
     throw new ApiResponse(200, [], "No tweets found for the following user !");
   }
   return res
-    .status(201)
+    .status(200)
     .json(new ApiResponse(200, tweet, "successfuly fetch all the tweets"));
 });
 
@@ -74,7 +120,11 @@ const deleteTweet = asyncHandler(async (req, res) => {
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(401, "tweet is requried");
   }
-  await Tweet.findByIdAndDelete(tweetId);
+  const deleteTweet = await Tweet.findByIdAndDelete(tweetId);
+
+  if (!deleteTweet) {
+    throw new ApiError(400, "error while deleting tweet!");
+  }
 
   return res.status(200).json(new ApiResponse(200, {}, "tweet is deleted"));
 });
