@@ -3,7 +3,7 @@ import { Playlist } from "../models/playlist.model";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import mongoose, { isValidObjectId } from "mongoose";
-import { User } from "../models/user.models";
+import { Video } from "../models/video.models";
 
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
@@ -87,4 +87,104 @@ const getUserPlayList = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, playList, "playList fetched successfully"));
 });
 
-export { createPlaylist, getUserPlayList };
+const getPlaylistbyId = asyncHandler(async (req, res) => {
+  const { playlistId } = req.param;
+
+  if (isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playList id miss matched");
+  }
+  const playlistAccess = await Playlist.findById(playlistId);
+
+  if (!playlistAccess) {
+    throw new ApiError(404, "playlist does not exist");
+  }
+
+  const playlist = await Playlist.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(playlistId),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "videos",
+        foreignField: "_id",
+        as: "playlistVideo",
+        pipeline: [
+          {
+            $project: {
+              thumbnail: 1,
+              videoFile: 1,
+              title: 1,
+              description: 1,
+              duration: 1,
+              views: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        description: 1,
+        playlistVideo: 1,
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ]);
+
+  if (playlist.length == 0) {
+    throw new ApiError(404, "playlist not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, "playlist fetched successfully"));
+});
+
+const addVideotoPlaylist = asyncHandler(async (req, res) => {
+  const { playlistId, videoId } = req.params;
+
+  if (!isValidObjectId(playlistId) || isValidObjectId(videoId)) {
+    throw new ApiError(400, "playlistId or videoId not valid");
+  }
+
+  const video = await Video.find(videoId);
+  if (!video) {
+    throw new ApiError(404, "video not found");
+  }
+
+  const playlist = await Playlist.find(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(404, "playList not exist");
+  }
+
+  if (playlist.videos.includes(new mongoose.Types.ObjectId(videoId))) {
+    throw new ApiError(500, "video already exist");
+  }
+
+  const addVideotoPlaylist = await Playlist.findByIdAndUpdate(
+    playlistId,
+    {
+      $push: { videos: new mongoose.Types.ObjectId(videoId) },
+    },
+    { new: true }
+  );
+
+  if (!addVideotoPlaylist) {
+    throw new ApiError(500, "can't added a video in playlist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "video added successfully in playlist"));
+});
+
+export { createPlaylist, getUserPlayList, getPlaylistbyId, addVideotoPlaylist };
