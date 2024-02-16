@@ -187,4 +187,46 @@ const addVideotoPlaylist = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "video added successfully in playlist"));
 });
 
-export { createPlaylist, getUserPlayList, getPlaylistbyId, addVideotoPlaylist };
+const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
+  const { playlistId, videoId } = req.param;
+
+  if (
+    !isValidObjectId(playlistId.trim()) ||
+    !isValidObjectId(videoId.playlistId.trim())
+  ) {
+    throw new ApiError(400, "playlist Id or video Id is invalid");
+  }
+
+  const playList = await Playlist.findById(playlistId);
+
+  if (!playList) {
+    throw new ApiError(404, "playlist not found");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "video not exist");
+  }
+
+  const removeVideo = Playlist.findByIdAndUpdate(
+    playlistId,
+    {
+      $pull: { videos: new mongoose.Types.ObjectId(videoId) },
+    },
+    { new: true }
+  );
+  if (!removeVideo) {
+    throw new ApiError(500, "Internal server error");
+  }
+
+  return res.status(200).json(new ApiError(200, "video remove from playlist"));
+});
+
+export {
+  createPlaylist,
+  getUserPlayList,
+  getPlaylistbyId,
+  addVideotoPlaylist,
+  removeVideoFromPlaylist,
+};
