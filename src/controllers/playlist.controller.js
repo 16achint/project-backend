@@ -220,7 +220,33 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Internal server error");
   }
 
-  return res.status(200).json(new ApiError(200, "video remove from playlist"));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "video remove from playlist"));
+});
+
+const deletePlayList = asyncHandler(async (req, res) => {
+  const { playlistId } = req.param;
+
+  if (!isValidObjectId(playlistId.trim())) {
+    throw new ApiError(400, "playlist Id or video Id is invalid");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(404, "playlist not found");
+  }
+
+  const deletePlayList = await Playlist.findByIdAndDelete(playlistId);
+
+  if (!deletePlayList) {
+    throw new ApiError(500, "connection error");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "playlist deleted successfully"));
 });
 
 export {
@@ -229,4 +255,5 @@ export {
   getPlaylistbyId,
   addVideotoPlaylist,
   removeVideoFromPlaylist,
+  deletePlayList,
 };
