@@ -267,10 +267,16 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "playList not exist");
   }
 
-  const updatePlayList = await Playlist.findByIdAndUpdate({
-    name: name,
-    description: description,
-  });
+  const updatePlayList = await Playlist.findByIdAndUpdate(
+    playlistId,
+    {
+      $set: {
+        name: name,
+        description: description,
+      },
+    },
+    { new: true }
+  );
 
   if (!updatePlayList) {
     throw new ApiError(500, "connection error try again later");
