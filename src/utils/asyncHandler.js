@@ -1,7 +1,7 @@
 // method 1
 
 const asyncHandler = (requestHanlder, name) => {
-  console.log(`Handler registered: ${name}`);
+  // console.log(`Handler registered: ${name}`);
   return (req, res, next) => {
     Promise.resolve(requestHanlder(req, res, next)).catch((err) => next(err));
   };
