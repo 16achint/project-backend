@@ -37,53 +37,53 @@ const getUserTweet = asyncHandler(async (req, res) => {
 
   console.log("id => ", id);
 
-  // const tweet = await Tweet.find({ owner: id });
-  const tweet = await Tweet.aggregate([
-    {
-      $match: {
-        owner: new mongoose.Types.ObjectId(id),
-      },
-    },
-    {
-      $lookup: {
-        from: "users",
-        localField: "owner",
-        foreignField: "_id",
-        as: "owner",
-        pipeline: {
-          $project: [
-            {
-              fullname: 1,
-              avatar: 1,
-              username: 1,
-            },
-          ],
-        },
-      },
-    },
-    {
-      $lookup: {
-        from: "likes",
-        localField: "_id",
-        foreignField: "tweet",
-        as: "likecount",
-      },
-    },
-    {
-      $addFields: {
-        likecount: {
-          $size: $likecount,
-        },
-      },
-    },
-    {
-      $addFields: {
-        owner: {
-          $first: $owner,
-        },
-      },
-    },
-  ]);
+  const tweet = await Tweet.find({ owner: id });
+  // const tweet = await Tweet.aggregate([
+  //   {
+  //     $match: {
+  //       owner: new mongoose.Types.ObjectId(id),
+  //     },
+  //   },
+  //   {
+  //     $lookup: {
+  //       from: "users",
+  //       localField: "owner",
+  //       foreignField: "_id",
+  //       as: "owner",
+  //       pipeline: {
+  //         $project: [
+  //           {
+  //             fullname: 1,
+  //             avatar: 1,
+  //             username: 1,
+  //           },
+  //         ],
+  //       },
+  //     },
+  //   },
+  //   {
+  //     $lookup: {
+  //       from: "likes",
+  //       localField: "_id",
+  //       foreignField: "tweet",
+  //       as: "likecount",
+  //     },
+  //   },
+  //   {
+  //     $addFields: {
+  //       likecount: {
+  //         $size: $likecount,
+  //       },
+  //     },
+  //   },
+  //   {
+  //     $addFields: {
+  //       owner: {
+  //         $first: $owner,
+  //       },
+  //     },
+  //   },
+  // ]);
 
   if (!tweet || !tweet.length === 0) {
     throw new ApiResponse(200, [], "No tweets found for the following user !");

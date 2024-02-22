@@ -91,8 +91,16 @@ const toogleTweetLike = asyncHandler(async (req, res) => {
   const isLiked = await Tweet.findById(tweetId);
 
   if (!isLiked) {
+    throw new ApiError(404, "tweet not found");
+  }
+  const isLikedAllRedy = await Like.find({
+    tweet: tweetId,
+    likedBy: req.user?._id,
+  });
+
+  if (isLikedAllRedy.length == 0) {
     const tweetLike = await Like.create({
-      Tweet: tweetId,
+      tweet: tweetId,
       likedBy: req.user?._id,
     });
 
@@ -102,8 +110,12 @@ const toogleTweetLike = asyncHandler(async (req, res) => {
 
     return res.status(200).json(new ApiResponse(200, tweetLike, "tweet liked"));
   } else {
-    const deleteLike = await Like.findByIdAndDelete(isLiked[0]._id);
+    const deleteLike = await Like.findByIdAndDelete(isLikedAllRedy[0]._id);
+    console.log("deleteLike ", deleteLike);
 
+    if (!deleteLike) {
+      throw new ApiError(500, "Internal error try again later");
+    }
     return res
       .status(200)
       .json(new ApiResponse(200, {}, "remove liked from tweet "));
