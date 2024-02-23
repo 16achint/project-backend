@@ -34,7 +34,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     if (!like) {
       throw new ApiError(500, "Internal error try again later");
     }
-    return res.status(200).json(new ApiResponse(200, {}, "liked"));
+    return res.status(200).json(new ApiResponse(200, isLike, "liked"));
   } else {
     const deleteLike = await Like.findByIdAndDelete(isLike[0]._id);
     if (!deleteLike) {
@@ -71,13 +71,17 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     if (!like) {
       throw new ApiError(500, "Internal server error try again later");
     }
-    return res.status(200).json(new ApiResponse(200, {}, "like comment"));
+    return res.status(200).json(new ApiResponse(200, like, "like comment"));
   } else {
     const deleteLike = await Like.findByIdAndDelete(isLiked[0]._id);
 
+    if (!deleteLike) {
+      throw new ApiError(500, "Internal server error try again later");
+    }
+
     return res
       .status(200)
-      .json(new ApiResponse(200, "remove like from comment"));
+      .json(new ApiResponse(200, {}, "remove like from comment"));
   }
 });
 
