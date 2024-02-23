@@ -13,12 +13,95 @@ const getVideoComment = asyncHandler(async (req, res) => {
     throw new ApiError(401, "video is required");
   }
 
-  const skip = (page - 1) * limit;
+  const video = await Video.findById(videoId);
+  if (!video) {
+    // If the video doesn't exist, delete all comments associated with the video ID
+    await Comment.deleteMany({ video: videoId });
+    throw new ApiError(
+      400,
+      "There is no such Video. All associated comments have been deleted."
+    );
+  }
 
-  const comments = await Comment.findById(videoId).limit(limit).skip(skip);
+  const commentAggregate = [
+    {
+      $match: {
+        video: new mongoose.Types.ObjectId(videoId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "comment",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likesCounts: {
+          $size: "$likes",
+        },
+        owner: {
+          $first: "$likes",
+        },
+        isLiked: {
+          $cond: {
+            if: { $in: [req.user?._id, "$likes.likedBy"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        content: 1,
+        createdAt: 1,
+        likesCounts: 1,
+        owner: {
+          username: 1,
+          fullName: 1,
+          "avatar.url": 1,
+        },
+        isLiked: 1,
+      },
+    },
+  ];
 
-  if (!comments) {
-    throw new ApiResponse(200, [], "no comments on this video");
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+  const comments = await Comment.aggregate(commentAggregate)
+    .skip((options.page - 1) * options.limit)
+    .limit(options.limit);
+
+  const totalComment = await Comment.countDocuments({ video: videoId });
+  const totalPages = Math.ceil(totalComment / limit);
+
+  if (page > totalPages) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          [],
+          "no more comment avaiable for this requrested page"
+        )
+      );
+  }
+
+  if (!comments || comments.length == 0) {
+    throw new ApiError(200, [], "no comments on this video");
   }
 
   return res
@@ -68,12 +151,9 @@ const updateComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const { content } = req.body;
 
-  console.log("id asdf", commentId);
   if (!commentId || !isValidObjectId(commentId)) {
     throw new ApiError(400, "id is invalid");
   }
-
-  console.log("id", commentId);
 
   const comment = await Comment.findById(commentId);
 
