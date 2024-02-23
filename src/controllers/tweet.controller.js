@@ -29,68 +29,103 @@ const createTweet = asyncHandler(async (req, res) => {
 });
 
 const getUserTweet = asyncHandler(async (req, res) => {
-  const id = req.params.id;
+  const { id } = req.params;
 
   if (!isValidObjectId(id)) {
     throw new ApiError(401, `invalid userId ${id}`);
   }
 
-  console.log("id => ", id);
+  const ownerPipeline = [
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(id),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        username: "$owner.username",
+        fullName: "$owner.fullName",
+        avatar: "$owner.avatar",
+      },
+    },
+    {
+      $unwind: "$username",
+    },
+    {
+      $unwind: "$fullName",
+    },
+    {
+      $unwind: "$avatar",
+    },
+  ];
 
-  const tweet = await Tweet.find({ owner: id });
-  // const tweet = await Tweet.aggregate([
-  //   {
-  //     $match: {
-  //       owner: new mongoose.Types.ObjectId(id),
-  //     },
-  //   },
-  //   {
-  //     $lookup: {
-  //       from: "users",
-  //       localField: "owner",
-  //       foreignField: "_id",
-  //       as: "owner",
-  //       pipeline: {
-  //         $project: [
-  //           {
-  //             fullname: 1,
-  //             avatar: 1,
-  //             username: 1,
-  //           },
-  //         ],
-  //       },
-  //     },
-  //   },
-  //   {
-  //     $lookup: {
-  //       from: "likes",
-  //       localField: "_id",
-  //       foreignField: "tweet",
-  //       as: "likecount",
-  //     },
-  //   },
-  //   {
-  //     $addFields: {
-  //       likecount: {
-  //         $size: $likecount,
-  //       },
-  //     },
-  //   },
-  //   {
-  //     $addFields: {
-  //       owner: {
-  //         $first: $owner,
-  //       },
-  //     },
-  //   },
-  // ]);
+  const tweetPipeline = [
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(id),
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "likecount",
+      },
+    },
+    {
+      $addFields: {
+        likeCount: {
+          $size: "$likecount",
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        content: 1,
+        createdAt: 1,
+        likeCount: 1,
+      },
+    },
+  ];
 
-  if (!tweet || !tweet.length === 0) {
-    throw new ApiResponse(200, [], "No tweets found for the following user !");
+  const [ownerdetails] = await Tweet.aggregate(ownerPipeline);
+  const tweets = await Tweet.aggregate(tweetPipeline);
+
+  if (!ownerdetails) {
+    throw new ApiError(404, "user data not found");
   }
+
+  if (!tweets) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          ownerdetails,
+          "No tweets found for the following user !"
+        )
+      );
+  }
+
+  const data = {
+    ownerdetails,
+    tweets,
+  };
+
   return res
     .status(200)
-    .json(new ApiResponse(200, tweet, "successfuly fetch all the tweets"));
+    .json(new ApiResponse(200, data, "successfuly fetch all the tweets"));
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
