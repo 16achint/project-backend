@@ -129,14 +129,23 @@ const getUserTweet = asyncHandler(async (req, res) => {
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
-  const tweetId = req.params.id;
-  const { content } = req.body;
+  const { content, tweetId } = req.body;
 
-  if (!tweetId || !content) {
-    throw new ApiError(401, "All filed are required");
+  if (!tweetId || !isValidObjectId(tweetId)) {
+    throw new ApiError(401, "tweetId is invaild");
   }
 
-  const tweet = await Tweet.findByIdAndUpdate(
+  if (!content.trim()) {
+    throw new ApiError(401, "content is requried for updated");
+  }
+
+  const tweet = await Tweet.findById(tweetId);
+
+  if (!tweet) {
+    throw new ApiError(404, "tweet does not exist");
+  }
+
+  const updateTweet = await Tweet.findByIdAndUpdate(
     tweetId,
     {
       content: content,
@@ -149,18 +158,25 @@ const updateTweet = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, tweet, "Tweet updated successfully"));
+    .json(new ApiResponse(200, updateTweet, "Tweet updated successfully"));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-  const { tweetId } = req.body;
+  const { tweetId } = req.params;
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(401, "tweet is requried");
   }
+
+  const tweet = await Tweet.findById(tweetId);
+
+  if (!tweet) {
+    throw new ApiError(404, "tweet does not exist");
+  }
+
   const deleteTweet = await Tweet.findByIdAndDelete(tweetId);
 
   if (!deleteTweet) {
-    throw new ApiError(400, "error while deleting tweet!");
+    throw new ApiError(500, "error while deleting tweet!");
   }
 
   return res.status(200).json(new ApiResponse(200, {}, "tweet is deleted"));

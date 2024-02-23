@@ -10,9 +10,8 @@ import {
 const router = Router();
 router.use(verifyJWT);
 
-router.route("/").post(createTweet);
-router.route("/:id/update-tweet").patch(updateTweet);
+router.route("/").post(createTweet).patch(updateTweet);
 router.route("/user/:id").get(getUserTweet);
-router.route("/id/delete").delete(deleteTweet);
+router.route("/:tweetId").delete(deleteTweet);
 
 export default router;
