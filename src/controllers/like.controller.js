@@ -135,21 +135,29 @@ const getLikedVideo = asyncHandler(async (req, res) => {
   const pipeline = [
     {
       $match: {
-        owner: new mongoose.Types.ObjectId(userId),
+        likedBy: new mongoose.Types.ObjectId(userId),
       },
     },
     {
       $lookup: {
-        from: "likes",
-        localField: "owner",
-        foreignField: "likedBy",
-        as: "like",
+        from: "videos",
+        localField: "video",
+        foreignField: "_id",
+        as: "videoDetails",
       },
     },
+    {
+      $addFields: {
+        thumbnail: { $arrayElemAt: ["$videoDetails.thumbnail", 0] },
+        videoFile: { $arrayElemAt: ["$videoDetails.videoFile", 0] },
+        title: { $arrayElemAt: ["$videoDetails.title", 0] },
+      },
+    },
+
     {
       $lookup: {
         from: "users",
-        localField: "owner",
+        localField: "videoDetails.owner",
         foreignField: "_id",
         as: "user",
       },
@@ -173,10 +181,16 @@ const getLikedVideo = asyncHandler(async (req, res) => {
     },
   ];
 
-  const videos = await Video.aggregate(pipeline);
+  const videos = await Like.aggregate(pipeline);
 
   if (!videos) {
     throw new ApiError(500, "something went worng");
+  }
+
+  if (videos.length == 0) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, videos, "you have not like any video yet"));
   }
 
   return res.status(200).json(new ApiResponse(200, videos, "success"));
