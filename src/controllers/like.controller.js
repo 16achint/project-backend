@@ -126,7 +126,60 @@ const toogleTweetLike = asyncHandler(async (req, res) => {
 });
 
 const getLikedVideo = asyncHandler(async (req, res) => {
-  // complete like controller
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(400, "you are not logged in");
+  }
+
+  const pipeline = [
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "owner",
+        foreignField: "likedBy",
+        as: "like",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $addFields: {
+        username: {
+          $arrayElemAt: ["$user.username", 0],
+        },
+      },
+    },
+    {
+      $project: {
+        id: 1,
+        username: 1,
+        videoFile: 1,
+        thumbnail: 1,
+        title: 1,
+        createdAt: 1,
+      },
+    },
+  ];
+
+  const videos = await Video.aggregate(pipeline);
+
+  if (!videos) {
+    throw new ApiError(500, "something went worng");
+  }
+
+  return res.status(200).json(new ApiResponse(200, videos, "success"));
 });
 
 export { toggleVideoLike, toggleCommentLike, toogleTweetLike, getLikedVideo };
