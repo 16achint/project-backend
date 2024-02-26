@@ -195,43 +195,47 @@ const logoutUser = asyncHandler(async (req, res) => {
 }, "logoutUser");
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  try {
-    const incomingRefreshToken =
-      req.cookies.refreshToken || req.body.refreshToken;
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
 
-    if (!incomingRefreshToken) {
-      throw new ApiError(401, "unauthorized request");
-    }
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-    const user = await User.findById(decodedToken?._id);
-
-    if (!user) {
-      throw new ApiError(401, "invalid refresh token");
-    }
-
-    if (incomingRefreshToken !== user?.refreshAccessToken) {
-      throw new ApiError(401, "refresh token is expired or used");
-    }
-
-    const { accessToken, newrefreshToken } =
-      await generatorAccessAndRefreshToken(user._id);
-
-    return res
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newrefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: refreshAccessToken },
-          "Access token refreshed"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(401, error?.message || "invaild refreshToken");
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
   }
+
+  const decodedToken = jwt.verify(
+    incomingRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+
+  const user = await User.findById(decodedToken?._id);
+
+  if (!user) {
+    throw new ApiError(401, "invalid refresh token");
+  }
+
+  if (incomingRefreshToken !== user?.refreshToken) {
+    throw new ApiError(401, "refresh token is expired or used");
+  }
+
+  const { accessToken, refreshToken } = await generatorAccessAndRefreshToken(
+    user._id
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken, refreshToken: refreshToken },
+        "Access token refreshed"
+      )
+    );
 }, "refreshAccessToken");
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
