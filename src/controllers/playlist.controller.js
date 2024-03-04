@@ -1,9 +1,10 @@
-import { asyncHandler } from "../utils/asyncHandler";
-import { Playlist } from "../models/playlist.model";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { Playlist } from "../models/playlist.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose, { isValidObjectId } from "mongoose";
-import { Video } from "../models/video.models";
+import { Video } from "../models/video.models.js";
+import { User } from "../models/user.models.js";
 
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
@@ -18,6 +19,8 @@ const createPlaylist = asyncHandler(async (req, res) => {
   const playlist = await Playlist.create({
     name,
     description,
+    videos: [],
+    owner: req.user?._id,
   });
 
   if (!playlist) {
@@ -30,7 +33,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
 });
 
 const getUserPlayList = asyncHandler(async (req, res) => {
-  const { userId } = req.param;
+  const { userId } = req.params;
   if (!isValidObjectId(userId)) {
     throw new ApiError(401, "userId is incorrect");
   }
@@ -39,7 +42,7 @@ const getUserPlayList = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "user does not exist");
   }
-  const playList = await Playlist.aggregate(
+  const playList = await Playlist.aggregate([
     {
       $match: {
         owner: new mongoose.Types.ObjectId(userId),
@@ -75,8 +78,8 @@ const getUserPlayList = asyncHandler(async (req, res) => {
       $sort: {
         createdAt: -1,
       },
-    }
-  );
+    },
+  ]);
 
   if (!playList) {
     throw new ApiError(500, "check your connection error");
@@ -88,9 +91,9 @@ const getUserPlayList = asyncHandler(async (req, res) => {
 });
 
 const getPlaylistbyId = asyncHandler(async (req, res) => {
-  const { playlistId } = req.param;
+  const { playlistId } = req.params;
 
-  if (isValidObjectId(playlistId)) {
+  if (!playlistId.trim()) {
     throw new ApiError(400, "playList id miss matched");
   }
   const playlistAccess = await Playlist.findById(playlistId);
@@ -151,16 +154,21 @@ const getPlaylistbyId = asyncHandler(async (req, res) => {
 const addVideotoPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
 
-  if (!isValidObjectId(playlistId) || isValidObjectId(videoId)) {
+  if (!playlistId.trim() || !videoId.trim()) {
     throw new ApiError(400, "playlistId or videoId not valid");
   }
 
-  const video = await Video.find(videoId);
+  const video = await Video.findById(videoId);
+
+  if (video.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(404, "video does not exist on your channel");
+  }
+
   if (!video) {
     throw new ApiError(404, "video not found");
   }
 
-  const playlist = await Playlist.find(playlistId);
+  const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
     throw new ApiError(404, "playList not exist");
@@ -188,12 +196,9 @@ const addVideotoPlaylist = asyncHandler(async (req, res) => {
 });
 
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
-  const { playlistId, videoId } = req.param;
+  const { playlistId, videoId } = req.params;
 
-  if (
-    !isValidObjectId(playlistId.trim()) ||
-    !isValidObjectId(videoId.playlistId.trim())
-  ) {
+  if (!playlistId.trim() || !videoId.trim()) {
     throw new ApiError(400, "playlist Id or video Id is invalid");
   }
 
@@ -209,7 +214,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "video not exist");
   }
 
-  const removeVideo = Playlist.findByIdAndUpdate(
+  const removeVideo = await Playlist.findByIdAndUpdate(
     playlistId,
     {
       $pull: { videos: new mongoose.Types.ObjectId(videoId) },
@@ -226,9 +231,9 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 });
 
 const deletePlayList = asyncHandler(async (req, res) => {
-  const { playlistId } = req.param;
+  const { playlistId } = req.params;
 
-  if (!isValidObjectId(playlistId.trim())) {
+  if (!playlistId) {
     throw new ApiError(400, "playlist Id or video Id is invalid");
   }
 
